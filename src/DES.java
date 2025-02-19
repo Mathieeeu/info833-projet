@@ -22,6 +22,7 @@ public class DES {
                     i--;
                 }
             }
+            time++;
         }
     }
 }
