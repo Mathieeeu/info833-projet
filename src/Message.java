@@ -2,26 +2,35 @@
 import java.util.ArrayList;
 
 public class Message {
-    private int source;
-    private int target;
-    private String type;
+    private Node source;
     private boolean forward;
-    private ArrayList<Integer> path;
+    private ArrayList<Node> path;
 
-    public Message(int source, int target, String type) {
+    public Message(Node source) {
         this.source = source;
-        this.target = target;
-        this.type = type;
         this.forward = false;
-        this.path = new ArrayList<Integer>();
+        this.path = new ArrayList<Node>();
     }
 
-    public Message(int source, int target, String type, boolean forward, ArrayList<Integer> path) {
+    public Message(Node source, boolean forward, ArrayList<Node> path) {
         this.source = source;
-        this.target = target;
-        this.type = type;
         this.forward = forward;
         this.path = path;
     }
 
+    public Node getSource() {
+        return source;
+    }
+
+    public boolean isForwarded() {
+        return forward;
+    }
+
+    public ArrayList<Node> getPath() {
+        return path;
+    }
+
+    public void addNodeToPath(Node node) {
+        path.add(node);
+    }
 }
