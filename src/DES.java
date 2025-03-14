@@ -11,7 +11,6 @@ public class DES {
 
     public static final int DEFAULT_MIN_TIME_TO_DELIVER = 3;
     public static final int DEFAULT_MAX_TIME_TO_DELIVER = 5;
-    public static final int TIME_LIMIT = 25;
 
 
     public DES() {
@@ -38,20 +37,23 @@ public class DES {
         this.nodes.add(node4);
     }
 
-    public void startSimulation() {
-        while (!this.queue.isEmpty() && this.time < TIME_LIMIT) {
+    public void startSimulation(int timeLimit) {
+
+        // TODO : Ici il faut corriger un peu car la queue peut se vider quand les évenements arrivent sur des noeuds bloqués
+        // while (!this.queue.isEmpty() && this.time < timeLimit) {
+        while (this.time < timeLimit) {
             for (int i = 0; i < this.queue.size(); i++) {
                 Event event = this.queue.get(i);
-                if (event.getTime() == 0) {
-                    System.out.println(event);
+                event.decreaseTime();
+                if (event.getTimeToDeliver() == 0) {
+                    System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
                     event.getTarget().deliver(event.getMessage());
                     this.queue.remove(i);
                     i--;
                 }
-                event.decreaseTime();
             }
             this.time++;
-            System.out.println(this);
+            System.out.println("\n" + this);
 
             // // Appuie sur entrée pour passer à la prochaine étape
             // try {
@@ -91,26 +93,24 @@ public class DES {
     }
 
     public void deliver(Node target, Message message) {
-        System.out.println("aaa");
-        this.addEvent(new Event(target, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER), message));
+        System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
+        this.addEvent(new Event(target, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER) + 1, message));
     }
     
     public void deliver(Node target, int minTimeToDeliver, int maxTimeToDeliver, Message message) {
-        if (message instanceof JoinMessage){
-            System.out.println("bb" + target.toString() + minTimeToDeliver + maxTimeToDeliver + ((JoinMessage)message).getNodeToInsert());
-        }
-        this.addEvent(new Event(target, rand.nextInt(minTimeToDeliver, maxTimeToDeliver), message));
+        System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
+        this.addEvent(new Event(target, rand.nextInt(minTimeToDeliver, maxTimeToDeliver + 1), message));
     }
 
     @Override
     public String toString() {
-        String result = "\u001B[38;5;33m[TIME : " + String.valueOf(time) + ", EVENTS : " + String.valueOf(this.queue.size()) + "]\u001B[0m \n";
+        String result = "\u001B[38;5;33m[TIME : " + String.valueOf(time) + ", EVENTS : " + String.valueOf(this.queue.size());
         
-        result += "(";
+        result += " (times : ";
         for (Event event : queue) {
-            result += event.getTime() + " ";
+            result += event.getTimeToDeliver() + " ";
         }
-        result += ")\n";
+        result += ")]\u001B[0m\n";
 
         for (Node node : nodes) {
             result += node.toString() + "\n";

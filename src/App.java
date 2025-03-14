@@ -3,7 +3,7 @@ public class App {
     public static DES des = new DES();
     public static void main(String[] args) throws Exception {
 
-        System.out.println("\u001B[38;5;198mWelcome to the fellowship!\u001B[0m");
+        System.out.println("\u001B[38;5;33mWelcome to the fellowship!\u001B[0m");
 
         // Etat initial
         Node node5 = new Node(123);
@@ -20,7 +20,7 @@ public class App {
         des.join(node6);
         des.join(node7);
         des.join(node8);
-        // des.leave(node5);
-        des.startSimulation();
+        // des.leave(node5); // TODO : en fait ce message là doit partir bien plus tard, après tous les join !!!
+        des.startSimulation(6);
     }
 }

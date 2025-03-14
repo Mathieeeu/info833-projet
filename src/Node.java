@@ -38,73 +38,106 @@ public class Node {
 
     public void leave() {
         // On envoie aux voisins que le noeud veut quitter
-        this.locked = true;
-        
-        App.des.deliver(this.left, App.des.DEFAULT_MIN_TIME_TO_DELIVER, App.des.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.right, "right"));
-        App.des.deliver(this.right, App.des.DEFAULT_MIN_TIME_TO_DELIVER, App.des.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.left, "left"));
+        if (!this.locked) {
+            this.locked = true;
+            System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " locked\u001B[0m");
+        }
+        else {
+            // TODO : mettre en queue l'opération "leave"
+        }
+        App.des.deliver(this.left, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.right, "right"));
+        App.des.deliver(this.right, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.left, "left"));
     }
 
     public void deliver(Message message) {
-        
-        // JoinMessage : Message qui circule pour trouver la bonne position d'un noeud à insérer
-        if (message instanceof JoinMessage) {
 
-            if (this.id > ((JoinMessage) message).getIdNodeToInsert()) {
-                // Le noeud courant est plus grand que le noeud à placer, donc on place le noeud
-                App.des.deliver(((JoinMessage) message).getNodeToInsert(), new InsertMessage(this, this.left, this));
-            }
-            else {
-                if (((JoinMessage) message).getPath().contains(this)) {
-                    // On a fait tout le tour de la DHT, on insère le noeud entre le plus grand et le plus petit (noeud courant)
-                    App.des.deliver(((JoinMessage) message).getNodeToInsert(), new InsertMessage(this, this.left, this));
-                }
-                else {
-                    // Le noeud courant est plus petit que le noeud à placer, on transfère le message au noeud droit du noeud courant
-                    message.addNodeToPath(this);
-                    // this.right.deliver(new JoinMessage(this, true, message.getPath(), ((JoinMessage) message).getNodeToInsert(), ((JoinMessage) message).getIdNodeToInsert()));
-                    App.des.deliver(this.right, App.des.DEFAULT_MIN_TIME_TO_DELIVER, App.des.DEFAULT_MAX_TIME_TO_DELIVER, new JoinMessage(this, true, message.getPath(), ((JoinMessage) message).getNodeToInsert(), ((JoinMessage) message).getIdNodeToInsert()));
-                }
-            }
-        }
-
-        // InsertMessage : Requête pour faire changer les voisins d'un noeud
-        else if (message instanceof InsertMessage) {
-
-            if (((InsertMessage) message).getLeft() != null) {
-                this.old_left = this.left;
-                this.left = ((InsertMessage) message).getLeft();
-            }
-            if (((InsertMessage) message).getRight() != null) {
-                this.old_right = this.right;
-                this.right = ((InsertMessage) message).getRight();
-            }
-            if (((InsertMessage) message).getRight() != null && ((InsertMessage) message).getLeft() != null) {
-                App.des.deliver(this.left, new InsertMessage(this, this, "right"));
-                App.des.deliver(this.right, new InsertMessage(this, this, "left"));
-            }
-        }
-
-        // LeaveMessage : requête pour mettre à jour les voisins suite au départ d'un noeud
-        else if (message instanceof LeaveMessage) {
-            if (((LeaveMessage) message).getNodeSide().equals("left")) {
-                this.left = ((LeaveMessage)message).getNode();
-                ((LeaveMessage) message).getSource().deliver(new AckMessage(this, "leave"));
-            }
-            else if (((LeaveMessage) message).getNodeSide().equals("right")) {
-                this.right = ((LeaveMessage)message).getNode();
-                ((LeaveMessage) message).getSource().deliver(new AckMessage(this, "leave"));
-            }
-        }
-
-        // AckMessage : Une opération a bien été acceptée
-        else if (message instanceof AckMessage) {
+        if (this.locked && !(message instanceof InsertMessage)) {
             this.queue.add(message);
+            System.out.println("\u001B[38;5;198m[INFO] message " + message.toString() + " added to queue of node " + this.id + "\u001B[0m");
+        }
 
-            // Si la queue contient DEUX ack de type "leave", on fait bien la suppression dans le noeud courant
-            if (queueContains2LeaveMessage()) {
-                this.left = null;
-                this.right = null;
-                this.locked = false;
+        else {
+            // JoinMessage : Message qui circule pour trouver la bonne position d'un noeud à insérer
+            switch (message) {
+                case JoinMessage joinMessage -> {
+                    
+                    // Si le noeud voisin droit est plus grand que le noeud à insérer (ie le noeud s'insèrera entre le noeud courant et ce fameux voisin), le noeud courant se bloque (dans le cas contraire il retransmet juste le message et on s'en fout)
+                    if (this.right.getId() > joinMessage.getIdNodeToInsert()) {
+                        this.locked = true;
+                        System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " locked\u001B[0m");
+                    }
+                    
+                    if (this.id > joinMessage.getIdNodeToInsert()) {
+                        // Le noued courant est plus grand que le noeud à placer, donc on place le noeud
+                        App.des.deliver(joinMessage.getNodeToInsert(), new InsertMessage(this, this.left, this));
+                    }
+                    
+                    else {
+                        if (this.left.getId() > this.id && this.left.getId() < joinMessage.getIdNodeToInsert()) {
+                            // Si le noeud voisin gauche est plus grand que le noeud courant mais plus petit que le noeud à insérer (ie on est sur le premier noeud de la DHT, son voisin gauche est le dernier) donc on insère le noeud entre le plus grand et le plus petit (noeud courant)
+                            this.locked = true;
+                            System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " locked\u001B[0m");
+                            App.des.deliver(joinMessage.getNodeToInsert(), new InsertMessage(this, this.left, this));
+                        }
+                        else {
+                            // Le noeud courant est plus petit que le noeud à placer, on transfère le message au noeud droit du noeud courant
+                            message.addNodeToPath(this);
+                            App.des.deliver(this.right, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new JoinMessage(this, true, message.getPath(), joinMessage.getNodeToInsert(), joinMessage.getIdNodeToInsert()));
+                        }
+                    }
+                }
+                case InsertMessage insertMessage -> {
+                    
+                    if (insertMessage.getLeft() != null) {
+                        this.old_left = this.left;
+                        this.left = insertMessage.getLeft();
+                    }
+                    if (insertMessage.getRight() != null) {
+                        this.old_right = this.right;
+                        this.right = insertMessage.getRight();
+                    }
+                    if (insertMessage.getRight() != null && insertMessage.getLeft() != null) {
+                        App.des.deliver(this.left, new InsertMessage(this, this, "right"));
+                        App.des.deliver(this.right, new InsertMessage(this, this, "left"));
+                    }
+                    System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " unlocked\u001B[0m");
+                    this.locked = false;
+                    if (!this.queue.isEmpty()) {
+                        this.deliver(queue.get(0));
+                    }
+                }
+                case LeaveMessage leaveMessage -> {
+                    if (leaveMessage.getNodeSide().equals("left")) {
+                        this.left = leaveMessage.getNode();
+                        leaveMessage.getSource().deliver(new AckMessage(this, "leave"));
+                    }
+                    else if (leaveMessage.getNodeSide().equals("right")) {
+                        this.right = leaveMessage.getNode();
+                        leaveMessage.getSource().deliver(new AckMessage(this, "leave"));
+                    }
+                }
+                case AckMessage ackMessage -> {
+                    this.queue.add(ackMessage);
+                    
+                    // Si la queue contient DEUX ack de type "leave", on fait bien la suppression dans le noeud courant
+                    if (queueContains2Messages("leave")) {
+                        this.left = null;
+                        this.right = null;
+                        this.locked = false;
+                        System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " unlocked\u001B[0m");
+                        if (!this.queue.isEmpty()) {
+                            // Si la queue n'est pas vide, on récupère le premier message et on le livre
+                            Message nextMessage = this.queue.get(0);
+                            System.out.println("\u001B[38;5;198m[INFO] message " + nextMessage.toString() + " delivered to node " + this.id + "\u001B[0m");
+                            this.queue.remove(nextMessage);
+                            this.deliver(nextMessage);
+                            
+                        }
+                    }
+                }
+                default -> {
+                    System.out.println("\u001B[38;5;20m[ERROR] message type not recognized\u001B[0m");
+                }
             }
         }
     }
@@ -112,27 +145,28 @@ public class Node {
     @Override
     public String toString() {
         if (this.left == null && this.right == null) {
-            return "Node " + this.id + " (left : null, right : null)";
+            return "Node " + this.id + " (left : null, right : null, queue : " + this.queue.size() + ")";
         }
         else if (this.left == null) {
-            return "Node " + this.id + " (left : null, right : " + this.right.getId() + ")";
+            return "Node " + this.id + " (left : null, right : " + this.right.getId() + ", queue : " + this.queue.size() + ")";
         }
         else if (this.right == null) {
-            return "Node " + this.id + " (left : " + this.left.getId() + ", right : null)";
+            return "Node " + this.id + " (left : " + this.left.getId() + ", right : null, queue : " + this.queue.size() + ")";
         }
-        return "Node " + this.id + " (left : " + this.left.getId() + ", right : " + this.right.getId() + ")";
+        return "Node " + this.id + " (left : " + this.left.getId() + ", right : " + this.right.getId() + ", queue : " + this.queue.size() + ")";
     }
 
-    public boolean queueContains2LeaveMessage(){
+    public boolean queueContains2Messages(String ackType){
         int cpt = 0;
+
         for(Message message : this.queue){
-            if (message instanceof AckMessage && ((AckMessage) message).getType().equals("leave")){
+            if (message instanceof AckMessage && ((AckMessage) message).getType().equals(ackType)){
                 cpt ++;
             }
         }
         if (cpt == 2) {
             for(Message message : this.queue){
-                if (message instanceof AckMessage && ((AckMessage) message).getType().equals("leave")){
+                if (message instanceof AckMessage && ((AckMessage) message).getType().equals(ackType)){
                     this.queue.remove(message);
                 }
             }

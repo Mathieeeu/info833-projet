@@ -1,16 +1,16 @@
 public class Event {
     private Node target;
-    private int time;
+    private int timeToDeliver;
     private Message message;
 
-    public Event(Node target, int time, Message message) {
+    public Event(Node target, int timeToDeliver, Message message) {
         this.target = target;
-        this.time = time;
+        this.timeToDeliver = timeToDeliver;
         this.message = message;
     }
 
-    public int getTime() {
-        return time;
+    public int getTimeToDeliver() {
+        return timeToDeliver;
     }
 
     public Node getTarget(){
@@ -22,10 +22,11 @@ public class Event {
     }
 
     public void decreaseTime(){
-        this.time--;
+        this.timeToDeliver--;
     }
     
+    @Override
     public String toString() {
-        return "Event [time=" + time + ", target=" + target + ", message=" + message + "]";
+        return "Event [time=" + timeToDeliver + ", target=" + target + ", message=" + message + "]";
     }
 }
