@@ -6,6 +6,7 @@ public class Message {
     private boolean forward;
     private ArrayList<Node> path;
 
+
     public Message(Node source) {
         this.source = source;
         this.forward = false;
@@ -17,6 +18,7 @@ public class Message {
         this.forward = forward;
         this.path = path;
     }
+    
 
     public Node getSource() {
         return source;

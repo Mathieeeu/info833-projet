@@ -39,28 +39,30 @@ public class Node {
     public void leave() {
         // On envoie aux voisins que le noeud veut quitter
         this.locked = true;
-        this.left.deliver(new LeaveMessage(this, this.right, "right"));
-        this.right.deliver(new LeaveMessage(this, this.left, "left"));
+        
+        App.des.deliver(this.left, App.des.DEFAULT_MIN_TIME_TO_DELIVER, App.des.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.right, "right"));
+        App.des.deliver(this.right, App.des.DEFAULT_MIN_TIME_TO_DELIVER, App.des.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.left, "left"));
     }
 
     public void deliver(Message message) {
-
+        
         // JoinMessage : Message qui circule pour trouver la bonne position d'un noeud à insérer
         if (message instanceof JoinMessage) {
 
             if (this.id > ((JoinMessage) message).getIdNodeToInsert()) {
                 // Le noeud courant est plus grand que le noeud à placer, donc on place le noeud
-                ((JoinMessage) message).getNodeToInsert().deliver(new InsertMessage(this, this.left, this));
+                App.des.deliver(((JoinMessage) message).getNodeToInsert(), new InsertMessage(this, this.left, this));
             }
             else {
                 if (((JoinMessage) message).getPath().contains(this)) {
                     // On a fait tout le tour de la DHT, on insère le noeud entre le plus grand et le plus petit (noeud courant)
-                    ((JoinMessage) message).getNodeToInsert().deliver(new InsertMessage(this, this.left, this));
-                } 
+                    App.des.deliver(((JoinMessage) message).getNodeToInsert(), new InsertMessage(this, this.left, this));
+                }
                 else {
                     // Le noeud courant est plus petit que le noeud à placer, on transfère le message au noeud droit du noeud courant
                     message.addNodeToPath(this);
-                    this.right.deliver(new JoinMessage(this, true, message.getPath(), ((JoinMessage) message).getNodeToInsert(), ((JoinMessage) message).getIdNodeToInsert()));  
+                    // this.right.deliver(new JoinMessage(this, true, message.getPath(), ((JoinMessage) message).getNodeToInsert(), ((JoinMessage) message).getIdNodeToInsert()));
+                    App.des.deliver(this.right, App.des.DEFAULT_MIN_TIME_TO_DELIVER, App.des.DEFAULT_MAX_TIME_TO_DELIVER, new JoinMessage(this, true, message.getPath(), ((JoinMessage) message).getNodeToInsert(), ((JoinMessage) message).getIdNodeToInsert()));
                 }
             }
         }
@@ -77,8 +79,8 @@ public class Node {
                 this.right = ((InsertMessage) message).getRight();
             }
             if (((InsertMessage) message).getRight() != null && ((InsertMessage) message).getLeft() != null) {
-                this.left.deliver(new InsertMessage(this, this, "right"));
-                this.right.deliver(new InsertMessage(this, this, "left"));
+                App.des.deliver(this.left, new InsertMessage(this, this, "right"));
+                App.des.deliver(this.right, new InsertMessage(this, this, "left"));
             }
         }
 

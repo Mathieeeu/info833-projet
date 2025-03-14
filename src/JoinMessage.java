@@ -23,4 +23,11 @@ public class JoinMessage extends Message {
     public int getIdNodeToInsert() {
         return idNodeToInsert;
     }
+
+    public String toString() {
+        return "JoinMessage{" +
+                "idNodeToInsert=" + this.idNodeToInsert +
+                ", source=" + super.getSource() +
+                '}';
+    }
 }

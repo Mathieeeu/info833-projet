@@ -33,4 +33,16 @@ public class InsertMessage extends Message {
     public Node getRight() {
         return this.right;
     }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("InsertMessage: ");
+        if (left != null) {
+            sb.append("left: ").append(left.toString()).append(", ");
+        }
+        if (right != null) {
+            sb.append("right: ").append(right.toString());
+        }
+        return sb.toString();
+    }
 }

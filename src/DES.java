@@ -1,15 +1,23 @@
 import java.util.ArrayList;
+import java.util.Random;
 
 // DES = Discrete-Event Simulation
 public class DES {
     private int time;
     private ArrayList<Node> nodes;
-    private ArrayList<Event> events;
+    private ArrayList<Event> queue;
+
+    private Random rand = new Random();
+
+    public static final int DEFAULT_MIN_TIME_TO_DELIVER = 3;
+    public static final int DEFAULT_MAX_TIME_TO_DELIVER = 5;
+    public static final int TIME_LIMIT = 25;
+
 
     public DES() {
         this.time = 0;
         this.nodes = new ArrayList<Node>();
-        this.events = new ArrayList<Event>();
+        this.queue = new ArrayList<Event>();
 
         // TRICHE : Le réseau contient déjà 4 noeuds reliés
         Node node1 = new Node(000);
@@ -31,16 +39,27 @@ public class DES {
     }
 
     public void startSimulation() {
-        while (!events.isEmpty()) {
-            for (int i = 0; i < events.size(); i++) {
-                Event event = events.get(i);
-                if (event.getTime() == time) {
-                    // TODO : faire quelque chose
-                    events.remove(i);
+        while (!this.queue.isEmpty() && this.time < TIME_LIMIT) {
+            for (int i = 0; i < this.queue.size(); i++) {
+                Event event = this.queue.get(i);
+                if (event.getTime() == 0) {
+                    System.out.println(event);
+                    event.getTarget().deliver(event.getMessage());
+                    this.queue.remove(i);
                     i--;
                 }
+                event.decreaseTime();
             }
-            time++;
+            this.time++;
+            System.out.println(this);
+
+            // // Appuie sur entrée pour passer à la prochaine étape
+            // try {
+            //     System.in.read();
+            // } catch (Exception e) {
+            //     e.printStackTrace();
+            // }
+
         }
     }
 
@@ -49,7 +68,7 @@ public class DES {
     }
 
     public void addEvent(Event event) {
-        this.events.add(event);
+        this.queue.add(event);
     }
 
     public void removeNode(Node node) {
@@ -57,13 +76,13 @@ public class DES {
     }
 
     public void removeEvent(Event event) {
-        this.events.remove(event);
+        this.queue.remove(event);
     }
 
     public void join(Node node) {
         // TODO : ajouter le noeud à la liste des noeuds après avoir trouvé sa position
         Node nodeToVisit = this.nodes.get(0); // Peut etre à changer parce que c'est un peu de la triche de prendre un noeud comme ça
-        nodeToVisit.deliver(new JoinMessage(null, node, node.getId())); // TODO : on met null ou node en source ???
+        this.deliver(nodeToVisit, new JoinMessage(null, node, node.getId())); // TODO : on met null ou node en source ???
     }
 
     public void leave(Node node) {
@@ -71,9 +90,28 @@ public class DES {
         node.leave();
     }
 
+    public void deliver(Node target, Message message) {
+        System.out.println("aaa");
+        this.addEvent(new Event(target, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER), message));
+    }
+    
+    public void deliver(Node target, int minTimeToDeliver, int maxTimeToDeliver, Message message) {
+        if (message instanceof JoinMessage){
+            System.out.println("bb" + target.toString() + minTimeToDeliver + maxTimeToDeliver + ((JoinMessage)message).getNodeToInsert());
+        }
+        this.addEvent(new Event(target, rand.nextInt(minTimeToDeliver, maxTimeToDeliver), message));
+    }
+
     @Override
     public String toString() {
-        String result = "\u001B[38;5;33m[TIME : " + time + "]\u001B[0m\n";
+        String result = "\u001B[38;5;33m[TIME : " + String.valueOf(time) + ", EVENTS : " + String.valueOf(this.queue.size()) + "]\u001B[0m \n";
+        
+        result += "(";
+        for (Event event : queue) {
+            result += event.getTime() + " ";
+        }
+        result += ")\n";
+
         for (Node node : nodes) {
             result += node.toString() + "\n";
         }

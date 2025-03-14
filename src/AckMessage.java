@@ -10,5 +10,4 @@ public class AckMessage extends Message {
     public String getType() {
         return this.type;
     }
-
 }
