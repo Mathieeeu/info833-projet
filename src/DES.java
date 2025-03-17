@@ -12,6 +12,8 @@ public class DES {
     public static final int DEFAULT_MIN_TIME_TO_DELIVER = 3;
     public static final int DEFAULT_MAX_TIME_TO_DELIVER = 5;
 
+    private boolean test = false;
+
     public DES() {
         this.time = 0;
         this.nodes = new ArrayList<Node>();
@@ -39,36 +41,39 @@ public class DES {
     public void startSimulation(int timeLimit) {
 
         // TODO : Ici il faut corriger un peu car la queue peut se vider quand les évenements arrivent sur des noeuds bloqués
-        while (!this.queue.isEmpty() && this.time < timeLimit) {
+        while (!this.queue.isEmpty() && this.time < timeLimit || !allQueuesEmpty()) {
         // while (this.time < timeLimit) {
             for (int i = 0; i < this.queue.size(); i++) {
                 Event event = this.queue.get(i);
                 event.decreaseTime();
                 if (event.getTimeToDeliver() == 0) {
-                    if (event.getMessage() instanceof JoinMessage) {
-                        System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + " from " + ((JoinMessage)event.getMessage()).getIdNodeToInsert() + "\u001B[0m");
-                    }
-                    else if (event.getMessage() instanceof InsertMessage) {
-                        System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + " from " + ((InsertMessage)event.getMessage()).getSource().getId() + "\u001B[0m");
-                    }
-                    else {
-                        System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
+                    switch (event.getMessage()) {
+                        case JoinMessage joinMessage -> {
+                            System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + " from " + joinMessage.getIdNodeToInsert() + "\u001B[0m");
+                        }
+                        case InsertMessage insertMessage -> {
+                            System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + " from " + insertMessage.getSource().getId() + "\u001B[0m");
+                        }
+                        case LeaveMessage leaveMessage ->  {
+                            if (leaveMessage.getSource() == null) {
+                                System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
+                                leaveMessage.getNode().leave();
+                            }
+                        }
+                        default -> System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
                     }
                     event.getTarget().deliver(event.getMessage());
                     this.queue.remove(i);
                     i--;
                 }
             }
+            if (this.queue.isEmpty() && !this.test) {
+                this.test = true;
+                System.out.println("\u001B[38;5;150m[INFO] Events queue is empty\u001B[0m");
+                // this.nodes.get(2).leave();
+            }
             this.time++;
             System.out.println("\n" + this);
-
-            // // Appuie sur entrée pour passer à la prochaine étape
-            // try {
-            //     System.in.read();
-            // } catch (Exception e) {
-            //     e.printStackTrace();
-            // }
-
         }
     }
 
@@ -88,32 +93,45 @@ public class DES {
         this.queue.remove(event);
     }
 
-    public void join(Node node) {
+    public void join(Node node, int timeToDeliver) {
         // TODO : ajouter le noeud à la liste des noeuds après avoir trouvé sa position
         Node nodeToVisit = this.nodes.get(0); // Peut etre à changer parce que c'est un peu de la triche de prendre un noeud comme ça
-        this.deliver(nodeToVisit, new JoinMessage(null, node, node.getId())); // TODO : on met null ou node en source ???
+        this.deliver(nodeToVisit, new JoinMessage(null, node, node.getId()), timeToDeliver); // TODO : on met null ou node en source ???
     }
 
-    public void leave(Node node) {
+    public void leave(Node node, int timeToDeliver) {
         // TODO : retirer le noeud de la liste des noeuds après avoir changé les liens de ses voisins
-        node.leave();
+        this.deliver(node, new LeaveMessage(null, node, null), timeToDeliver);
     }
 
     public void deliver(Node target, Message message) {
-        if (message instanceof JoinMessage) {
-            System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + ((JoinMessage)message).getIdNodeToInsert() + "\u001B[0m");
+        deliver(target, message, 0);
+    }
+
+    public void deliver(Node target, Message message, int timeToDeliver) {
+        switch (message) {
+            case JoinMessage joinMessage -> {
+                System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + joinMessage.getIdNodeToInsert() + "\u001B[0m");
+            }
+            case InsertMessage insertMessage -> {
+                System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + insertMessage.getSource().getId() + "\u001B[0m");
+            }
+            default -> System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
         }
-        else if (message instanceof InsertMessage) {
-            System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + ((InsertMessage)message).getSource().getId() + "\u001B[0m");
-        }
-        else {
-            System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
-        }
-        this.addEvent(new Event(target, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER) + 1, message));
+        this.addEvent(new Event(target, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER) + 1 + timeToDeliver, message));
     }
     
     public void deliver(Node target, int minTimeToDeliver, int maxTimeToDeliver, Message message) {
-        System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
+        
+        switch (message) {
+            case JoinMessage joinMessage -> {
+                System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + joinMessage.getIdNodeToInsert() + "\u001B[0m");
+            }
+            case InsertMessage insertMessage -> {
+                System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + insertMessage.getSource().getId() + "\u001B[0m");
+            }
+            default -> System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
+        }
         this.addEvent(new Event(target, rand.nextInt(minTimeToDeliver, maxTimeToDeliver + 1), message));
     }
 
@@ -131,5 +149,33 @@ public class DES {
             result += node.toString() + "\n";
         }
         return result;
+    }
+
+    private boolean allQueuesEmpty() {
+        for (Node node : this.nodes) {
+            if (!node.getQueue().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public void displayDES() {
+        System.out.println("Final state of the network :");
+        ArrayList<Node> nodesToVisit = new ArrayList<Node>();
+        for (Node node : this.nodes) {
+            nodesToVisit.add(node);
+        }
+        Node currentNode = nodesToVisit.get(0);
+        
+        while(!nodesToVisit.isEmpty()) {
+            System.out.print("\u001B[38;5;33m" + currentNode.getId() + "\u001B[0m -> ");
+            nodesToVisit.remove(currentNode);
+            currentNode = currentNode.getRight();
+            if (!nodesToVisit.contains(currentNode) && !nodesToVisit.isEmpty()) {
+                System.out.print("\n");
+                currentNode = nodesToVisit.get(0);
+            }
+        }
     }
 }

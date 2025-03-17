@@ -10,4 +10,8 @@ public class AckMessage extends Message {
     public String getType() {
         return this.type;
     }
+
+    public String toString() {
+        return "ackMessage from " + this.getSource().getId() + " (type : " + this.type + ")";
+    }
 }

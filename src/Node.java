@@ -36,14 +36,24 @@ public class Node {
         this.right = right;
     }
 
+    public ArrayList<Message> getQueue() {
+        return this.queue;
+    }
+
+    public Node getLeft() {
+        return this.left;
+    }
+
+    public Node getRight() {
+        return this.right;
+    }
+
     public void leave() {
         // On envoie aux voisins que le noeud veut quitter
+        System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " wants to leave\u001B[0m");
         if (!this.locked) {
             this.locked = true;
             System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " locked\u001B[0m");
-        }
-        else {
-            // TODO : mettre en queue l'opération "leave"
         }
         App.des.deliver(this.left, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.right, "right"));
         App.des.deliver(this.right, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new LeaveMessage(this, this.left, "left"));
@@ -55,7 +65,7 @@ public class Node {
             this.checkQueue();
         }
 
-        if (this.locked && !(message instanceof InsertMessage)) {
+        if (this.locked && !(message instanceof InsertMessage) && !(message instanceof AckMessage)) {
             this.queue.add(message);
             System.out.println("\u001B[38;5;198m[INFO] message " + message.toString() + " added to queue of node " + this.id + "\u001B[0m");
         }
@@ -111,16 +121,19 @@ public class Node {
                     }
                 }
                 case LeaveMessage leaveMessage -> {
-                    if (leaveMessage.getNodeSide().equals("left")) {
-                        this.left = leaveMessage.getNode();
-                        leaveMessage.getSource().deliver(new AckMessage(this, "leave"));
-                    }
-                    else if (leaveMessage.getNodeSide().equals("right")) {
-                        this.right = leaveMessage.getNode();
-                        leaveMessage.getSource().deliver(new AckMessage(this, "leave"));
+                    if (leaveMessage.getSource() != null) {
+                        if (leaveMessage.getNodeSide().equals("left")) {
+                            this.left = leaveMessage.getNode();
+                            leaveMessage.getSource().deliver(new AckMessage(this, "leave"));
+                        }
+                        else if (leaveMessage.getNodeSide().equals("right")) {
+                            this.right = leaveMessage.getNode();
+                            leaveMessage.getSource().deliver(new AckMessage(this, "leave"));
+                        }
                     }
                 }
                 case AckMessage ackMessage -> {
+                    System.out.println("\u001B[38;5;198m[INFO] ack received by node " + this.id + "\u001B[0m");
                     this.queue.add(ackMessage);
                     
                     // Si la queue contient DEUX ack de type "leave", on fait bien la suppression dans le noeud courant
@@ -157,19 +170,18 @@ public class Node {
 
     public boolean queueContains2Messages(String ackType){
         int cpt = 0;
-
+        ArrayList<Message> toRemove = new ArrayList<Message>();
         for(Message message : this.queue){
-            if (message instanceof AckMessage && ((AckMessage) message).getType().equals(ackType)){
+            if (message instanceof AckMessage ackMessage && ackMessage.getType().equals(ackType)){
                 cpt ++;
+                toRemove.add(ackMessage);
             }
         }
         if (cpt == 2) {
-            for(Message message : this.queue){
-                if (message instanceof AckMessage && ((AckMessage) message).getType().equals(ackType)){
-                    this.queue.remove(message);
-                }
+            for (Message message : toRemove){
+                this.queue.remove(message);
             }
-            return true;
+             return true;
         }
         return false;
     }
@@ -177,8 +189,10 @@ public class Node {
     public void checkQueue() {
         // Si la queue n'est pas vide, on récupère le premier message et on le livre
         Message nextMessage = this.queue.get(0);
-        System.out.println("\u001B[38;5;198m[INFO] message " + nextMessage.toString() + " delivered to node " + this.id + "\u001B[0m");
-        this.queue.remove(nextMessage);
-        this.deliver(nextMessage);
+        if (!(nextMessage instanceof AckMessage)) {
+            System.out.println("\u001B[38;5;198m[INFO] message " + nextMessage.toString() + " delivered to node " + this.id + "\u001B[0m");
+            this.queue.remove(nextMessage);
+            this.deliver(nextMessage);
+        }
     }
 }
