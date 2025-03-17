@@ -21,6 +21,6 @@ public class App {
         des.join(node7);
         des.join(node8);
         // des.leave(node5); // TODO : en fait ce message là doit partir bien plus tard, après tous les join !!!
-        des.startSimulation(6);
+        des.startSimulation(250);
     }
 }

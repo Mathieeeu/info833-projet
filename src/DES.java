@@ -12,7 +12,6 @@ public class DES {
     public static final int DEFAULT_MIN_TIME_TO_DELIVER = 3;
     public static final int DEFAULT_MAX_TIME_TO_DELIVER = 5;
 
-
     public DES() {
         this.time = 0;
         this.nodes = new ArrayList<Node>();
@@ -40,13 +39,21 @@ public class DES {
     public void startSimulation(int timeLimit) {
 
         // TODO : Ici il faut corriger un peu car la queue peut se vider quand les évenements arrivent sur des noeuds bloqués
-        // while (!this.queue.isEmpty() && this.time < timeLimit) {
-        while (this.time < timeLimit) {
+        while (!this.queue.isEmpty() && this.time < timeLimit) {
+        // while (this.time < timeLimit) {
             for (int i = 0; i < this.queue.size(); i++) {
                 Event event = this.queue.get(i);
                 event.decreaseTime();
                 if (event.getTimeToDeliver() == 0) {
-                    System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
+                    if (event.getMessage() instanceof JoinMessage) {
+                        System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + " from " + ((JoinMessage)event.getMessage()).getIdNodeToInsert() + "\u001B[0m");
+                    }
+                    else if (event.getMessage() instanceof InsertMessage) {
+                        System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + " from " + ((InsertMessage)event.getMessage()).getSource().getId() + "\u001B[0m");
+                    }
+                    else {
+                        System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
+                    }
                     event.getTarget().deliver(event.getMessage());
                     this.queue.remove(i);
                     i--;
@@ -93,7 +100,15 @@ public class DES {
     }
 
     public void deliver(Node target, Message message) {
-        System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
+        if (message instanceof JoinMessage) {
+            System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + ((JoinMessage)message).getIdNodeToInsert() + "\u001B[0m");
+        }
+        else if (message instanceof InsertMessage) {
+            System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + " from " + ((InsertMessage)message).getSource().getId() + "\u001B[0m");
+        }
+        else {
+            System.out.println("\u001B[38;5;200m[MESSAGE] " + message.getClass().getSimpleName() + " sent to " + target.toString() + "\u001B[0m");
+        }
         this.addEvent(new Event(target, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER) + 1, message));
     }
     

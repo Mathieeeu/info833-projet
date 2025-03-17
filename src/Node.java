@@ -51,6 +51,10 @@ public class Node {
 
     public void deliver(Message message) {
 
+        if (!this.locked && !this.queue.isEmpty()) {
+            this.checkQueue();
+        }
+
         if (this.locked && !(message instanceof InsertMessage)) {
             this.queue.add(message);
             System.out.println("\u001B[38;5;198m[INFO] message " + message.toString() + " added to queue of node " + this.id + "\u001B[0m");
@@ -103,7 +107,7 @@ public class Node {
                     System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " unlocked\u001B[0m");
                     this.locked = false;
                     if (!this.queue.isEmpty()) {
-                        this.deliver(queue.get(0));
+                        this.checkQueue();
                     }
                 }
                 case LeaveMessage leaveMessage -> {
@@ -126,12 +130,7 @@ public class Node {
                         this.locked = false;
                         System.out.println("\u001B[38;5;198m[INFO] node " + this.id + " unlocked\u001B[0m");
                         if (!this.queue.isEmpty()) {
-                            // Si la queue n'est pas vide, on récupère le premier message et on le livre
-                            Message nextMessage = this.queue.get(0);
-                            System.out.println("\u001B[38;5;198m[INFO] message " + nextMessage.toString() + " delivered to node " + this.id + "\u001B[0m");
-                            this.queue.remove(nextMessage);
-                            this.deliver(nextMessage);
-                            
+                            this.checkQueue();
                         }
                     }
                 }
@@ -145,15 +144,15 @@ public class Node {
     @Override
     public String toString() {
         if (this.left == null && this.right == null) {
-            return "Node " + this.id + " (left : null, right : null, queue : " + this.queue.size() + ")";
+            return "Node " + this.id + " (left : null, right : null, queue : " + this.queue.size() + ", locked : " + this.locked + ")";
         }
         else if (this.left == null) {
-            return "Node " + this.id + " (left : null, right : " + this.right.getId() + ", queue : " + this.queue.size() + ")";
+            return "Node " + this.id + " (left : null, right : " + this.right.getId() + ", queue : " + this.queue.size() + ", locked : " + this.locked + ")";
         }
         else if (this.right == null) {
-            return "Node " + this.id + " (left : " + this.left.getId() + ", right : null, queue : " + this.queue.size() + ")";
+            return "Node " + this.id + " (left : " + this.left.getId() + ", right : null, queue : " + this.queue.size() + ", locked : " + this.locked + ")";
         }
-        return "Node " + this.id + " (left : " + this.left.getId() + ", right : " + this.right.getId() + ", queue : " + this.queue.size() + ")";
+        return "Node " + this.id + " (left : " + this.left.getId() + ", right : " + this.right.getId() + ", queue : " + this.queue.size() + ", locked : " + this.locked + ")";
     }
 
     public boolean queueContains2Messages(String ackType){
@@ -173,5 +172,13 @@ public class Node {
             return true;
         }
         return false;
+    }
+
+    public void checkQueue() {
+        // Si la queue n'est pas vide, on récupère le premier message et on le livre
+        Message nextMessage = this.queue.get(0);
+        System.out.println("\u001B[38;5;198m[INFO] message " + nextMessage.toString() + " delivered to node " + this.id + "\u001B[0m");
+        this.queue.remove(nextMessage);
+        this.deliver(nextMessage);
     }
 }
