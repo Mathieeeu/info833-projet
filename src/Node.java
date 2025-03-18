@@ -10,6 +10,7 @@ public class Node {
     private Node old_left;
     private Node old_right;
     private ArrayList<Message> queue;
+    private ArrayList<Resource> resources;
 
     //Constructeur
     public Node(int id) {
@@ -20,6 +21,7 @@ public class Node {
         this.old_left = null;
         this.old_right = null;
         this.queue = new ArrayList<Message>();
+        this.resources = new ArrayList<Resource>();
     }
     
     //Getter (il sert à tricher au tout début :)
@@ -147,6 +149,71 @@ public class Node {
                         }
                     }
                 }
+                case PutMessage putMessage -> {
+                    if (putMessage.getResource().getId() == this.id) {
+                        // Si la resource a l'id exact du noeud
+                        this.resources.add(putMessage.getResource());
+                        System.out.println("\u001B[38;5;198m[INFO] resource " + putMessage.getResource().getId() + " added to node " + this.id + "\u001B[0m");
+                        //Dupliquer la ressource sur le noeud voisin gauche et de droite
+                    }
+                    else if (this.id < putMessage.getResource().getId() &&  putMessage.getResource().getId() < this.right.getId()) {
+                        // Si la resource a un id plus grand que le noeud courant et plus petit que le noeud droit, on l'ajoute au noeud le plus proche
+                        if ((putMessage.getResource().getId() - this.id) <= (this.right.getId() - putMessage.getResource().getId())) {
+                            // Le noeud courant est le plus proche, on ajoute la ressource pour lui (et on le communique à ses deux voisins)
+                            this.resources.add(putMessage.getResource());
+                            App.des.deliver(this.left, new ResourceMessage(this, putMessage.getResource(), false));
+                            App.des.deliver(this.right, new ResourceMessage(this, putMessage.getResource(), false));
+                        } else {
+                            // Le noeud voisin droit est le plus proche, on lui ajoute la ressource/ transfère la ressource
+                            App.des.deliver(this.right, new ResourceMessage(this, putMessage.getResource(), true));
+                        }
+                    }
+                    else if (this.left.getId() > this.id && putMessage.getResource().getId() > this.left.getId()) {
+                        // Dans le cas du premier noeud du réseau, l'id gauche est plus grand que l'id courant, si l'id de la resource est plus grand que le noeud gauche, on l'ajoute entre le dernier et le premier noeud car c'est le nouveau plus grand 
+                        App.des.deliver(this.left, new ResourceMessage(this, putMessage.getResource(), true));
+                    } else {
+                        // Si l'id est plus grand, on transfère le message au noeud droit du noeud courant
+                        message.addNodeToPath(this);
+                        App.des.deliver(this.right, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new PutMessage(this, true, message.getPath(), putMessage.getResource()));
+                    }
+                }
+
+                case ResourceMessage resourceMessage -> {
+                    if (resourceMessage.isForwardingAResource()) {
+                        // La ressource demandée avec un GET arrive via ce message
+                        System.out.println("\u001B[38;5;198m[INFO] resource " + resourceMessage.getResource().getId() + " received by node " + this.id + "\u001B[0m");
+                        this.resources.add(resourceMessage.getResource()); // TODO : est-ce qu'on laisse ça ? Ou est ce que la ressource demandée doit juste être lue ?
+                    }
+                    else if (resourceMessage.isCenter()) {
+                        // Si le noeud courant est le plus proche de la position de la ressource, on veut qu'il soit ajouté par ses deux voisins (et on ajoute la ressource)
+                        this.resources.add(resourceMessage.getResource());
+                        App.des.deliver(this.left, new ResourceMessage(this, resourceMessage.getResource(), false));
+                        App.des.deliver(this.right, new ResourceMessage(this, resourceMessage.getResource(), false));
+                    } else {
+                        // Si le noeud courant n'est pas le centre de la ressource
+                        this.resources.add(resourceMessage.getResource());
+                    }
+                }
+
+                case GetMessage getMessage -> {
+                    int index = indexOfResource(getMessage.getIdResource());
+                    if (index != -1) {
+                        // Ce noeud contient la ressource recherchée
+                        App.des.deliver(getMessage.getRequestingNode(), new ResourceMessage(this, this.resources.get(index)), DES.DEFAULT_MAX_TIME_TO_DELIVER);
+                    } else {
+                        if (getMessage.getIdResource() < this.id) {
+                            // L'id de la ressource est inférieur à l'id du noeud courant donc on envoie le message à gauche
+                            getMessage.addNodeToPath(this);
+                            App.des.deliver(this.left, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new GetMessage(this, true, getMessage.getPath(), getMessage.getRequestingNode(), getMessage.getIdResource()));
+                            
+                        } else {
+                            // L'id de la ressource est supérieur à l'id du noeud courant, donc on envoie le message à droite
+                            getMessage.addNodeToPath(this);
+                            App.des.deliver(this.right, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new GetMessage(this, true, getMessage.getPath(), getMessage.getRequestingNode(), getMessage.getIdResource()));
+                        }
+                    }
+                }
+
                 default -> {
                     System.out.println("\u001B[38;5;20m[ERROR] message type not recognized\u001B[0m");
                 }
@@ -168,7 +235,7 @@ public class Node {
         return "Node " + this.id + " (left : " + this.left.getId() + ", right : " + this.right.getId() + ", queue : " + this.queue.size() + ", locked : " + this.locked + ")";
     }
 
-    public boolean queueContains2Messages(String ackType){
+    private boolean queueContains2Messages(String ackType){
         int cpt = 0;
         ArrayList<Message> toRemove = new ArrayList<Message>();
         for(Message message : this.queue){
@@ -186,7 +253,16 @@ public class Node {
         return false;
     }
 
-    public void checkQueue() {
+    private int indexOfResource(int id) {
+        for (int i = 0; i < resources.size(); i++) {
+            if (resources.get(i).getId() == id) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void checkQueue() {
         // Si la queue n'est pas vide, on récupère le premier message et on le livre
         Message nextMessage = this.queue.get(0);
         if (!(nextMessage instanceof AckMessage)) {
@@ -194,5 +270,21 @@ public class Node {
             this.queue.remove(nextMessage);
             this.deliver(nextMessage);
         }
+    }
+
+    public String printResources() {
+        String res = "(";
+        if (this.resources.isEmpty()) {
+            res += ".";
+        } else if (this.resources.size() == 1) {
+            res += resources.get(0).getId();
+        } else {
+            for (int i = 0; i<this.resources.size() - 1; i++) {
+                res += resources.get(i).getId() + ", ";
+            }
+            res += resources.get(resources.size() - 1).getId();
+        }
+        res += ")";
+        return res;
     }
 }

@@ -5,6 +5,7 @@ import java.util.Random;
 public class DES {
     private int time;
     private ArrayList<Node> nodes;
+    private ArrayList<Resource> resources;
     private ArrayList<Event> queue;
 
     private Random rand = new Random();
@@ -12,11 +13,12 @@ public class DES {
     public static final int DEFAULT_MIN_TIME_TO_DELIVER = 3;
     public static final int DEFAULT_MAX_TIME_TO_DELIVER = 5;
 
-    private boolean test = false;
+    private boolean endOfSimulation = false;
 
     public DES() {
         this.time = 0;
         this.nodes = new ArrayList<Node>();
+        this.resources = new ArrayList<Resource>();
         this.queue = new ArrayList<Event>();
 
         // TRICHE : Le réseau contient déjà 4 noeuds reliés
@@ -40,7 +42,6 @@ public class DES {
 
     public void startSimulation(int timeLimit) {
 
-        // TODO : Ici il faut corriger un peu car la queue peut se vider quand les évenements arrivent sur des noeuds bloqués
         while (!this.queue.isEmpty() && this.time < timeLimit || !allQueuesEmpty()) {
         // while (this.time < timeLimit) {
             for (int i = 0; i < this.queue.size(); i++) {
@@ -60,6 +61,9 @@ public class DES {
                                 leaveMessage.getNode().leave();
                             }
                         }
+                        case PutMessage putMessage ->{
+                            System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
+                        }
                         default -> System.out.println("\u001B[38;5;150m[EVENT] " + event.getMessage().getClass().getSimpleName() + " delivered to " + event.getTarget().toString() + "\u001B[0m");
                     }
                     event.getTarget().deliver(event.getMessage());
@@ -67,10 +71,9 @@ public class DES {
                     i--;
                 }
             }
-            if (this.queue.isEmpty() && !this.test) {
-                this.test = true;
+            if (this.queue.isEmpty() && !this.endOfSimulation) {
+                this.endOfSimulation = true;
                 System.out.println("\u001B[38;5;150m[INFO] Events queue is empty\u001B[0m");
-                // this.nodes.get(2).leave();
             }
             this.time++;
             System.out.println("\n" + this);
@@ -79,6 +82,10 @@ public class DES {
 
     public void addNode(Node node) {
         this.nodes.add(node);
+    }
+    
+    public void addResource(Resource resource) {
+        this.resources.add(resource);
     }
 
     public void addEvent(Event event) {
@@ -89,19 +96,35 @@ public class DES {
         this.nodes.remove(node);
     }
 
+    public void removeResource(Resource resource) {
+        this.resources.remove(resource);
+    }
+
     public void removeEvent(Event event) {
         this.queue.remove(event);
     }
 
     public void join(Node node, int timeToDeliver) {
-        // TODO : ajouter le noeud à la liste des noeuds après avoir trouvé sa position
+        // TODO : réattribuer les ressources
         Node nodeToVisit = this.nodes.get(0); // Peut etre à changer parce que c'est un peu de la triche de prendre un noeud comme ça
         this.deliver(nodeToVisit, new JoinMessage(null, node, node.getId()), timeToDeliver); // TODO : on met null ou node en source ???
     }
 
     public void leave(Node node, int timeToDeliver) {
-        // TODO : retirer le noeud de la liste des noeuds après avoir changé les liens de ses voisins
+        // TODO : réattribuer les ressources
         this.deliver(node, new LeaveMessage(null, node, null), timeToDeliver);
+    }
+
+    public void put(Resource resource, int timeToDeliver) {
+        System.out.println("\u001B[38;5;200m[MESSAGE] " + resource.getData() + " wants to be storaged" + "\u001B[0m");
+        Node nodeToVisit = this.nodes.get(0);
+        this.addEvent(new Event(nodeToVisit, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER) + 1 + timeToDeliver, new PutMessage(null, resource)));
+    }
+
+    public void get(Node requestingNode, int id, int timeToDeliver) {
+        // TODO : requestingNode cherche la ressource parmi ses voisins (dans un sens qui est logique par contre, genre si on cherche un id plus faible que le node (noeud courant) on va à gauche, sinon à droite)
+        System.out.println("\u001B[38;5;200m[MESSAGE] " + requestingNode.getId() + " wants to get resource " + id + "\u001B[0m");
+        this.addEvent(new Event(requestingNode, rand.nextInt(DEFAULT_MAX_TIME_TO_DELIVER) + 1 + timeToDeliver, new GetMessage(requestingNode, requestingNode, id)));
     }
 
     public void deliver(Node target, Message message) {
@@ -169,7 +192,7 @@ public class DES {
         Node currentNode = nodesToVisit.get(0);
         
         while(!nodesToVisit.isEmpty()) {
-            System.out.print("\u001B[38;5;33m" + currentNode.getId() + "\u001B[0m -> ");
+            System.out.print("\u001B[38;5;33m" + currentNode.getId() + "\u001B[38;5;150m" + currentNode.printResources() + "\u001B[0m -> ");
             nodesToVisit.remove(currentNode);
             currentNode = currentNode.getRight();
             if (!nodesToVisit.contains(currentNode) && !nodesToVisit.isEmpty()) {

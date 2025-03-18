@@ -16,18 +16,32 @@ public class App {
         des.addNode(node8);
         Node node9 = new Node(555);
         des.addNode(node9);
+        Resource resource1 = new Resource(12, "Resource1");
+        des.addResource(resource1);
+        Resource resource2 = new Resource(130, "Resource2");
+        des.addResource(resource2);
+        Resource resource3 = new Resource(410, "Resource3");
+        des.addResource(resource3);
+        Resource resource4 = new Resource(876, "Resource4");
+        des.addResource(resource4);
         
-        // Simulation
+        // Scénario de la simulation
         des.join(node5, 0);
         des.join(node6, 0);
         des.join(node7, 1);
         des.join(node8, 0);
-        des.leave(node5, 45); // TODO : en fait ce message là doit partir bien plus tard, après tous les join !!!
+        des.leave(node5, 45); // ce message là doit partir bien plus tard, après tous les join !!!
         des.join(node9, 50);
-        des.leave(node6, 100);
-        des.startSimulation(500);
-
+        des.put(resource1, 60);
+        des.put(resource2, 63);
+        des.put(resource3, 70);
+        des.put(resource4, 59);
+        des.get(node6, 130, 80); // TODO : Si la ressource n'est pas dans la DHT, ça ne plante pas mais ça tourne en boucle, il faudrait un moyen de savoir si on a déjà visité un noeud ou pas et de dire "ressource indisponible" au noeud qui l'a demandée si besoin
+        des.get(node7, 876, 90);
+        des.leave(node7, 120);
+        
         // Etat final
+        des.startSimulation(500);
         des.displayDES();
     }
 }
