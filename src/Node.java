@@ -107,10 +107,24 @@ public class Node {
                     if (insertMessage.getLeft() != null) {
                         this.old_left = this.left;
                         this.left = insertMessage.getLeft();
+                        //Redistribuer les ressources entre le noeud courant et le noeud à insérer
+                        for (int i = 0; i < this.resources.size(); i++) {
+                            if (this.resources.get(i).getId() > insertMessage.getLeft().getId()) {
+                                App.des.deliver(insertMessage.getLeft(), new ResourceMessage(this, this.resources.get(i), true));
+                                this.resources.remove(i);
+                            }
+                        }
                     }
                     if (insertMessage.getRight() != null) {
                         this.old_right = this.right;
                         this.right = insertMessage.getRight();
+                        //Redistribuer les ressources entre le noeud courant et le noeud à insérer
+                        for (int i = 0; i < this.resources.size(); i++) {
+                            if (this.resources.get(i).getId() < insertMessage.getRight().getId()) {
+                                App.des.deliver(insertMessage.getRight(), new ResourceMessage(this, this.resources.get(i), true));
+                                this.resources.remove(i);
+                            }
+                        }
                     }
                     if (insertMessage.getRight() != null && insertMessage.getLeft() != null) {
                         App.des.deliver(this.left, new InsertMessage(this, this, "right"));
@@ -140,6 +154,15 @@ public class Node {
                     
                     // Si la queue contient DEUX ack de type "leave", on fait bien la suppression dans le noeud courant
                     if (queueContains2Messages("leave")) {
+                        //On redistribue les resources à ces voisins
+                        for (int i = this.resources.size() - 1; i >= 0; i--) {
+                            if (this.resources.get(i).getId() > this.left.getId()) {
+                                App.des.deliver(this.left, new ResourceMessage(this, this.resources.get(i), false));
+                            } else {
+                                App.des.deliver(this.right, new ResourceMessage(this, this.resources.get(i), false));
+                            }
+                            this.resources.remove(i);
+                        }
                         this.left = null;
                         this.right = null;
                         this.locked = false;
@@ -152,17 +175,32 @@ public class Node {
                 case PutMessage putMessage -> {
                     if (putMessage.getResource().getId() == this.id) {
                         // Si la resource a l'id exact du noeud
-                        this.resources.add(putMessage.getResource());
-                        System.out.println("\u001B[38;5;198m[INFO] resource " + putMessage.getResource().getId() + " added to node " + this.id + "\u001B[0m");
-                        //Dupliquer la ressource sur le noeud voisin gauche et de droite
+                        if (this.resources.contains(putMessage.getResource())) {
+                            // Si la ressource est déjà présente dans le noeud courant, on ne fait rien
+                            System.out.println("\u001B[38;5;198m[INFO] resource " + putMessage.getResource().getId() + " already present in node " + this.id + "\u001B[0m");
+                        }
+                        else{
+                            this.resources.add(putMessage.getResource());
+                            System.out.println("\u001B[38;5;198m[INFO] resource " + putMessage.getResource().getId() + " added to node " + this.id + "\u001B[0m");
+                            //Dupliquer la ressource sur le noeud voisin gauche et de droite
+                            App.des.deliver(this.left, new ResourceMessage(this, putMessage.getResource(), false));
+                            App.des.deliver(this.right, new ResourceMessage(this, putMessage.getResource(), false));
+                        }
                     }
                     else if (this.id < putMessage.getResource().getId() &&  putMessage.getResource().getId() < this.right.getId()) {
                         // Si la resource a un id plus grand que le noeud courant et plus petit que le noeud droit, on l'ajoute au noeud le plus proche
                         if ((putMessage.getResource().getId() - this.id) <= (this.right.getId() - putMessage.getResource().getId())) {
                             // Le noeud courant est le plus proche, on ajoute la ressource pour lui (et on le communique à ses deux voisins)
-                            this.resources.add(putMessage.getResource());
-                            App.des.deliver(this.left, new ResourceMessage(this, putMessage.getResource(), false));
-                            App.des.deliver(this.right, new ResourceMessage(this, putMessage.getResource(), false));
+                            if (this.resources.contains(putMessage.getResource())) {
+                                // Si la ressource est déjà présente dans le noeud courant, on ne fait rien
+                                System.out.println("\u001B[38;5;198m[INFO] resource " + putMessage.getResource().getId() + " already present in node " + this.id + "\u001B[0m");
+                            }
+                            else{
+                                this.resources.add(putMessage.getResource());
+                                App.des.deliver(this.left, new ResourceMessage(this, putMessage.getResource(), false));
+                                App.des.deliver(this.right, new ResourceMessage(this, putMessage.getResource(), false));
+                            }
+
                         } else {
                             // Le noeud voisin droit est le plus proche, on lui ajoute la ressource/ transfère la ressource
                             App.des.deliver(this.right, new ResourceMessage(this, putMessage.getResource(), true));
