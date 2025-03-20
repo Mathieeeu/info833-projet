@@ -38,7 +38,7 @@ public class App {
         des.put(resource4, 59);
         des.get(node6, 130, 80); // TODO : Si la ressource n'est pas dans la DHT, ça ne plante pas mais ça tourne en boucle, il faudrait un moyen de savoir si on a déjà visité un noeud ou pas et de dire "ressource indisponible" au noeud qui l'a demandée si besoin
         des.get(node7, 876, 90);
-        des.leave(node7, 120);
+        //des.leave(node7, 120);
         
         // Etat final
         des.startSimulation(500);

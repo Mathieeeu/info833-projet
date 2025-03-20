@@ -220,7 +220,7 @@ public class Node {
                     if (resourceMessage.isForwardingAResource()) {
                         // La ressource demandée avec un GET arrive via ce message
                         System.out.println("\u001B[38;5;198m[INFO] resource " + resourceMessage.getResource().getId() + " received by node " + this.id + "\u001B[0m");
-                        this.resources.add(resourceMessage.getResource()); // TODO : est-ce qu'on laisse ça ? Ou est ce que la ressource demandée doit juste être lue ?
+                        // this.resources.add(resourceMessage.getResource()); // TODO : est-ce qu'on laisse ça ? Ou est ce que la ressource demandée doit juste être lue ?
                     }
                     else if (resourceMessage.isCenter()) {
                         // Si le noeud courant est le plus proche de la position de la ressource, on veut qu'il soit ajouté par ses deux voisins (et on ajoute la ressource)
@@ -229,7 +229,19 @@ public class Node {
                         App.des.deliver(this.right, new ResourceMessage(this, resourceMessage.getResource(), false));
                     } else {
                         // Si le noeud courant n'est pas le centre de la ressource
-                        this.resources.add(resourceMessage.getResource());
+                        if (this.resources.contains(resourceMessage.getResource())) {
+                            // Si la ressource est déjà présente dans le noeud courant, on la transfère au noeud voisin qui n'est pas l'emetteur du message
+                            System.out.println("\u001B[38;5;198m[INFO] resource " + resourceMessage.getResource().getId() + " already present in node " + this.id + " - Resource forwading" + "\u001B[0m");
+                            // TODO : Revoir condition, c'est pas bon
+                            if (this.left.getId() == resourceMessage.getSource().getId()) {
+                                App.des.deliver(this.right, new ResourceMessage(this, resourceMessage.getResource(), false));
+                            } else {
+                                App.des.deliver(this.left, new ResourceMessage(this, resourceMessage.getResource(), false));
+                            }
+                        }
+                        else {
+                            this.resources.add(resourceMessage.getResource());
+                        }
                     }
                 }
 
