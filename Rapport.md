@@ -59,6 +59,8 @@ Le `RessourceMessage` contient un paramètre _center_ qui permet d'indiquer au n
 
 ### Récupération d'une ressource
 
+Si un noeud souhaite récupérer une ressource, on crée un évènement que l'on stocke jusqu'à ce que son temps d'activation arrive. Dès lors, on transmet un `GetMessage` au premier noeud de la DHT. Le noeud regarde alors s'il a la ressource. Si c'est le cas, il envoie un `RessourceMessage` (contenant la ressource) au noeud demandeur. Si ce n'est pas le cas, il compare l'id de la ressource souhaité à celui du noeud courant. S'il est supérieur, on transmet le `GetMessage` au voisin de droite et inversement.
+
 
 ## Améliorations possibles
 
