@@ -105,13 +105,11 @@ public class DES {
     }
 
     public void join(Node node, int timeToDeliver) {
-        // TODO : réattribuer les ressources
         Node nodeToVisit = this.nodes.get(0); // Peut etre à changer parce que c'est un peu de la triche de prendre un noeud comme ça
         this.deliver(nodeToVisit, new JoinMessage(null, node, node.getId()), timeToDeliver); // TODO : on met null ou node en source ???
     }
 
     public void leave(Node node, int timeToDeliver) {
-        // TODO : réattribuer les ressources
         this.deliver(node, new LeaveMessage(null, node, null), timeToDeliver);
     }
 

@@ -108,24 +108,30 @@ public class Node {
                         this.old_left = this.left;
                         this.left = insertMessage.getLeft();
                         //Redistribuer les ressources entre le noeud courant et le noeud à insérer
-                        // for (int i = this.resources.size() - 1; i >= 0; i--) {
-                        //     if (this.resources.get(i).getId() < insertMessage.getLeft().getId()) {
-                        //         App.des.deliver(insertMessage.getLeft(), new ResourceMessage(this, this.resources.get(i), true));
-                        //         this.resources.remove(i);
-                        //     }
-                        // }
+                        for (int i = this.resources.size() - 1; i >= 0; i--) {
+                            if (this.resources.get(i).getId() < insertMessage.getLeft().getId()) {
+                                App.des.deliver(insertMessage.getLeft(), new ResourceMessage(this, this.resources.get(i), false));
+                                //Le noeud informe son ancien voisin de gauche qu'il doit supprimer la ressource
+                                App.des.deliver(this.getRight(), new DeleteMessage(this, this.resources.get(i).getId()));
+                            }
+                        }
                     }
+                    
                     if (insertMessage.getRight() != null) {
                         this.old_right = this.right;
                         this.right = insertMessage.getRight();
                         //Redistribuer les ressources entre le noeud courant et le noeud à insérer
-                        // for (int i = this.resources.size() - 1; i >= 0; i--) {
-                        //     if (this.resources.get(i).getId() > insertMessage.getRight().getId()) {
-                        //         App.des.deliver(insertMessage.getRight(), new ResourceMessage(this, this.resources.get(i), true));
-                        //         this.resources.remove(i);
-                        //     }
-                        // }
+                        for (int i = this.resources.size() - 1; i >= 0; i--) {
+                            if (this.resources.get(i).getId() > insertMessage.getRight().getId()) {
+                                App.des.deliver(insertMessage.getRight(), new ResourceMessage(this, this.resources.get(i), false));
+                                //Le noeud informe son ancien voisin de droite qu'il doit supprimer la ressource
+                                App.des.deliver(this.getLeft(), new DeleteMessage(this, this.resources.get(i).getId()));
+                            }
+                            //Si le noeud possède une ressource en bout de chaine
+
+                        }
                     }
+
                     if (insertMessage.getRight() != null && insertMessage.getLeft() != null) {
                         App.des.deliver(this.left, new InsertMessage(this, this, "right"));
                         App.des.deliver(this.right, new InsertMessage(this, this, "left"));
@@ -160,14 +166,6 @@ public class Node {
                             App.des.deliver(this.left, new PutMessage(this, this.resources.get(i)));
                             this.resources.remove(i);
                         }
-                        // for (int i = this.resources.size() - 1; i >= 0; i--) {
-                        //     if (this.resources.get(i).getId() > this.left.getId()) {
-                        //         App.des.deliver(this.left, new ResourceMessage(this, this.resources.get(i), false));
-                        //     } else {
-                        //         App.des.deliver(this.right, new ResourceMessage(this, this.resources.get(i), false));
-                        //     }
-                        //     this.resources.remove(i);
-                        // }
                         this.left = null;
                         this.right = null;
                         this.locked = false;
@@ -266,6 +264,19 @@ public class Node {
                             getMessage.addNodeToPath(this);
                             App.des.deliver(this.right, DES.DEFAULT_MIN_TIME_TO_DELIVER, DES.DEFAULT_MAX_TIME_TO_DELIVER, new GetMessage(this, true, getMessage.getPath(), getMessage.getRequestingNode(), getMessage.getIdResource()));
                         }
+                    }
+                }
+
+                case DeleteMessage deleteMessage -> {
+                    int index = indexOfResource(deleteMessage.getIdRessourceToDelete());
+                    if (index != -1) {
+                        // Ce noeud contient la ressource recherchée
+                        this.resources.remove(index);
+                        System.out.println("\u001B[38;5;198m[INFO] resource " + deleteMessage.getIdRessourceToDelete() + " deleted from node " + this.id + "\u001B[0m");
+                    } else {
+                        System.out.println("\u001B[38;5;198m[INFO] resource " + deleteMessage.getIdRessourceToDelete() + " not found in node " + this.id + "\u001B[0m");
+                        // Si la ressource n'est pas trouvée sur le noeud courant, il faut renvoyer un message à celui qui vient de nous envoyer le deleteMessage pour lui dire que c'est LUI qui a la ressource à supprimer 
+                        App.des.deliver(deleteMessage.getSource(), new DeleteMessage(this, deleteMessage.getIdRessourceToDelete()));
                     }
                 }
 
