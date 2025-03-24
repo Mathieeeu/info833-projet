@@ -6,7 +6,7 @@ _Charlotte - Louna - Mathieu_
 
 ## État initial
 
-Pour ce projet, nous avons décidé de créer l'entièrté de la DHT par nous-même et de ne pas utiliser de bibliothèques déjà existantes. Nous avons fait le choix de coder en Java pour ce projet. Pour ce faire nous avons décidé d'initialiser la DHT avec quatre noeuds qui sont déjà bien reliés entre eux, afin d'éviter de devoir gérer les premières connexions. Nous avons également choisi de créer et d'ajouter tous les noeuds, ressources et évènements qui se produisent au cours de la simulation dès le début, en précisant à chaque fois le moment où ils s'éxecuteront. Cela nous permet de décider précisément le moment où chaque événement se produit et de pouvoir ainsi les gérer de manière plus précise. Tout cela est fait dans la classe `App` qui est notre classe principale.
+Pour ce projet, nous avons décidé de créer la DHT par nous-même sans utiliser de bibliothèques déjà existantes. Nous avons fait le choix de coder en Java pour ce projet. Pour ce faire nous avons décidé d'initialiser la DHT avec quatre noeuds qui sont déjà bien reliés entre eux, afin d'éviter de devoir gérer les premières connexions. Nous avons également choisi de créer et d'ajouter tous les noeuds, ressources et évènements qui se produisent au cours de la simulation dès le début, en précisant à chaque fois le moment où ils s'éxecuteront. Cela nous permet de décider précisément le moment où chaque événement se produit et de pouvoir ainsi les gérer de manière plus précise. Tout cela est fait dans la classe `App` qui est notre classe principale.
 
 ## Structure du projet
 
@@ -14,7 +14,7 @@ Pour ce projet, nous avons décidé de créer l'entièrté de la DHT par nous-m�
 
 Tous les noeuds sont créés à partir de la classe `Node`. Ainsi, ils connaissent leurs voisins (à gauche et à droite) et peuvent communiquer entre eux. Ils ont également une liste de ressources qu'ils possèdent, un attribut `locked` qui permet de verrouiller le noeud quand un message est en cours de traitement et une liste d'évenements reçus pendant qu'il était bloqué et qu'il devra traiter plus tard (la `queue`).
 
-Les noeuds ont la possibilité de rejoindre ou de quitter la `DHT` grace aux méthodes `join` et `leave`. Celles-ci envoient des messages aux noeuds présents dans la DHT 
+Les noeuds ont la possibilité de rejoindre ou de quitter la `DHT` grace aux méthodes `join` et `leave`. Celles-ci envoient des messages aux noeuds présents dans la DHT. 
 
 ### Les messages
 
@@ -37,7 +37,7 @@ Pour une meilleure gestion des messages, nous avons créé des protocoles de com
 
 ### Les ressources
 
-(détailler le fonctionnement des ressources)
+Une ressource est identifiée par son `id` et contient des `data` (une chaine de caractère). Elle peut être ajoutée à la DHT via la méthode _put_. Cette méthode assure un degré de réplication de 3 avec comme centre le noeud dont l'id est le plus proche de celui de la ressource. Cela permet une plus grande tolérance aux erreurs et évite de perdre une ressource en cas de crash. Un noeud peut également demander à obtenir une ressource avec la méthode _get_.
 
 ## Fonctionnalités de la DHT
 
@@ -45,8 +45,8 @@ Nous avons réalisé les étapes 1, 2 et 3 du projet.
 
 ### Evènements et simulation
 
-La simulation est "gérée" majoritairement par la classe `DES`. Cette classe contient une liste de tous les noeuds créés (qu'ils soient présent ou non dans la DHT) ainsi qu'une liste d'évènements. Un évènement possède un message, une cible à qui délivrer le message et un délais d'exécution. Le message sera délivré une fois son délais d'exècution à 0. 
-A chaque tilt d'horloge, la classe parcourt toute la liste des évènements et regarde si leur temps d'exécution est venu. Si c'est le cas, elle les sort de la liste d'event et les délivre à l'aide de la méthode _deliver_ sinon elle diminue leur délais de 1. Une fois toute la liste parcourue, le temps de la simulation avance de 1. Quand la liste d'évènement est vide, la classe regarde si des messages sont en queue sur des noeuds et si ce n'est pas le cas, la simulation s'arrête.
+La simulation est "gérée" majoritairement par la classe `DES`. Cette classe contient une liste de tous les noeuds créés (qu'ils soient présent ou non dans la DHT), la liste de toutes les ressources ainsi qu'une liste d'évènements. Un évènement possède un message, une cible à qui délivrer le message et un délais d'exécution. Le message sera délivré une fois son délais d'exècution à 0. 
+A chaque _tilt_ d'horloge, la classe parcourt toute la liste des évènements et regarde si leur temps d'exécution est venu. Si c'est le cas, elle les sort de la liste d'event et les délivre à l'aide de la méthode _deliver_ sinon elle diminue leur délais de 1. Une fois toute la liste parcourue, le temps de la simulation avance de 1. Quand la liste d'évènement est vide, la classe regarde si des messages sont en queue sur des noeuds et si ce n'est pas le cas, la simulation s'arrête.
 Pour ajouter un côté aléatoire à notre simulation, la méthode _deliver_ possède 2 arguments : minTimeToDeliver et maxTimeToDeliver. Ils servent à donner une fourchette dans laquelle le message sera envoyé permettant de changer le scénario à chaque fois et donc de se rapprocher un peu plus de la réalité.
 
 ### Ajout d'un noeud
@@ -57,16 +57,14 @@ Pour pouvoir ajouter un noeud à la DHT, on crée un `JoinMessage` qui est stock
 - Si l'id du noeud courant est inférieur à celui du noeud à insérer et supérieur à celui de son voisin de gauche (insertion entre le premier et le dernier noeud de la DHT), alors le noeud courant se bloque et envoie un `InsertMessage` au noeud voulant rejoindre la communauté de l'anneau en lui précisant ses voisins
 - Si aucun de ces cas n'est validé, on transfère le message au noeud suivant (le voisin de doite) dans la DHT
 
-Quand le noeud à insérer reçoit le `InsertMessage`,il met à jour ses voisins et leur envoie un autre `InsertMessage` en leur précisant qu'il est leur voisin de gauche (resp de droite). Les noeuds mettent alors à jour leur voisin en gardant en mémoire leur ancien voisin en cas de problème et redistribue leur ressource correctement pour maintenir le bon degré de réplication et la "chaîne". Pour cela, il compare l'id du nouveau noeud avec l'id des ressources, s'il est plus grand (pour le voisin de gauche) ou plus petit (pour le voisin de droite), il informe le nouveau noeud qu'il doit ajouter cette ressource à sa liste de ressources. Il envoie également un `DeleteRessource` à son ancien voisin de droite/gauche afin qu'il supprime cette ressource afin de garder un degré de réplication à 3. Si le noeud possède la ressource, il la supprime sinon il renvoie le `DeleteMessage` au noeud source pour qu'il supprime la ressource. Ce dernier cas correspond à l'insertion du nouveau noeud en bout de chaine de replication.
+Quand le noeud à insérer reçoit le `InsertMessage`, il met à jour ses voisins et leur envoie un autre `InsertMessage` en leur précisant qu'il est leur voisin de gauche (resp de droite). Les noeuds mettent alors à jour leur voisin en gardant en mémoire leur ancien voisin en cas de problème et redistribue leur ressource correctement pour maintenir le bon degré de réplication et la "chaîne". Pour cela, il compare l'id du nouveau noeud avec l'id des ressources, s'il est plus grand (pour le voisin de gauche) ou plus petit (pour le voisin de droite), il informe le nouveau noeud qu'il doit ajouter cette ressource à sa liste de ressources. Il envoie également un `DeleteRessource` à son ancien voisin de droite/gauche afin qu'il supprime cette ressource afin de garder un degré de réplication à 3. Si le noeud possède la ressource, il la supprime sinon il renvoie le `DeleteMessage` au noeud source pour qu'il supprime la ressource. Ce dernier cas correspond à l'insertion du nouveau noeud en bout de chaine de replication.
 Une fois tout cela fait, les noeuds concernés par l'insertion du nouveau noeud se déverouille.
 
 ### Suppression d'un noeud
 
-**(parler de "comment maintenir le degré de réplication de chaque donnée" parce qu'on l'a fait et c'est assez avancé je crois)**
-
 Lorsqu'un noeud veut quitter la DHT, il se bloque et envoie un message à ses deux voisins. Le message contient le noeud qui deviendra le nouveau voisin ainsi qu'une chaîne de caractère indiquant le côté du noeud qui va changer (droite ou gauche). Quand un noeud reçoit un `LeaveMessage`, il met à jour ses voisins selon l'indication puis il envoie un `AckMessage` au noeud qui part pour lui signifier qu'il a bien effectué les changements.
 
-Dès que la queue du noeud contient 2 `AckMessage` (celui du voisin de droite et celui de gauche), le noeud répartit ses ressources à ses voisins. Pour ce faire, il parcourt la liste de ses ressources et pour chaque il envoie à son voisin avec l'id le plus faible (celui de gauche) un message pour placer la ressource puis il supprime cette dernière. Le fait que ce soit le noeud avec le plus petit id qui s'en occupe garantie que la ressource soit placée correctement. Une fois la liste des ressources vides, il initialise ses voisins à _null_, se déverrouille et il vérifie qu'il n'a pas de message en attende (il les livre s'il en a) puis il part.
+Dès que la queue du noeud contient 2 `AckMessage` (celui du voisin de droite et celui de gauche), le noeud répartit ses ressources à ses voisins. Pour ce faire, il parcourt la liste de ses ressources et pour chaque il envoie à son voisin avec l'id le plus faible (celui de gauche) un message pour placer la ressource puis il supprime cette dernière. Le fait que ce soit le noeud avec le plus petit id qui s'en occupe garantie que la ressource soit placée correctement (dans notre configuration). Une fois la liste des ressources vides, il initialise ses voisins à _null_, se déverrouille et vérifie qu'il n'a pas de message en attende (il les livre s'il en a) puis il part.
 
 ### Ajout d'une ressource
 
@@ -96,6 +94,10 @@ Si un noeud souhaite récupérer une ressource, on crée un évènement que l'on
 Le routage de proche en proche fonctionne bien dans notre DHT, cependant il peut être amélioré. En effet, actuellement, le transfert de la plupart des messages se fait de la gauche vers la droite par soucis de simplicité. Cependant, il serait intéressant de mettre en place un routage plus intelligent qui permettrait de réduire le nombre de sauts nécessaires pour atteindre un noeud :
 
 - Soit en déterminant la direction à prendre en fonction de l'id du noeud destinataire (sens horaire ou anti-horaire).
-- Soit en créant des raccourcis entre certains noeuds stratégiques.
+- Soit en créant des raccourcis entre certains noeuds stratégiques (liens longs).
 
 ## Conclusion
+
+Ce projet a été très intéressant à réaliser. Il nous a permi de bien comprendre le fonctionnement d'une DHT et de voir l'entendu des possibilités qui en découle. En effet commme dit précédemment, nous pourrions ajouter encore beaucoup de fonctionnalités aux projets et en améliorer des existantes sans avoir l'impression de tourner en rond.
+Nous sommes tous content de ne pas avoir utilisé peersim ou des bibliothèques pré-existantes. Cela nous a permi de comprendre de A à Z ce que nous faisions et comment cela marchait, ce qui n'est pas toujours le cas avec de fonctionnalités déjà codées.
+

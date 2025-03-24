@@ -127,8 +127,6 @@ public class Node {
                                 //Le noeud informe son ancien voisin de droite qu'il doit supprimer la ressource
                                 App.des.deliver(this.getLeft(), new DeleteMessage(this, this.resources.get(i).getId()));
                             }
-                            //Si le noeud possède une ressource en bout de chaine
-
                         }
                     }
 
