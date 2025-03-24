@@ -18,12 +18,26 @@ Les noeuds ont la possibilité de rejoindre ou de quitter la `DHT` grace aux mé
 
 ### Les messages
 
-(détailler le fonctionnement des msg)
+Les messages sont créés à partir de la classe abstraite `Message`. Par défaut, un message est initialisé avec seulement une `source` et les attributs optionnels `path` et `forward` qui permettent de différencier un message envoyé directement d'un message qui a été transféré par un autre noeud.
+
+L'envoi d'un message se fait par la méthode `deliver` de `Node`. Cette méthode vérifie si le noeud est verrouillé, si c'est le cas, le message est ajouté à la `queue` du noeud. Sinon, le message est traité directement.
+
+Pour une meilleure gestion des messages, nous avons créé des protocoles de communication utilisant des types de messages différents. Ainsi, nous avons les classes `JoinMessage`, `InsertMessage`, `LeaveMessage`, `AckMessage`, `PutMessage`, `GetMessage`, `RessourceMessage` et `DeleteMessage` qui héritent toutes de la classe `Message`. La méthode `deliver` agit différemment selon le type de message. Chaque type de message a des attributs spécifiques qui permettent de transmettre des informations supplémentaires. Le tableau suivant résume les attributs de chaque message :
+
+| Message | Attributs | Description | Fonctionnement |
+| --- | --- | --- | --- |
+| `JoinMessage` | `Node nodeToInsert`<br>`int idNodeToInsert` | Permet à un noeud de rejoindre la DHT | Le noeud compare son id avec celui du noeud à insérer et transfère le message au noeud suivant jusqu'à trouver le bon emplacement du noeud à insérer. |
+| `InsertMessage` | `Node left`<br>`Node right` | Permet de mettre à jour les voisins d'un noeud | Une fois que le noeud a trouvé sa place, il envoie un message à ses nouveaux voisins pour qu'ils se mettent à jour. Les ressources sont redistribuées pour maintenir le bon degré de réplication. |
+| `LeaveMessage` | `Node node`<br>`String nodeSide` | Permet à un noeud de quitter (proprement) la DHT | Le noeud communique à ses voisins qu'il va partir et leur indique qui sera le nouveau voisin (et de quel côté). Les voisins envoient un `AckMessage` pour confirmer qu'ils ont bien effectué les changements. Une fois que le noeud a reçu les deux `AckMessage`, il redistribue ses ressources et part. |
+| `AckMessage` | `String type` | Permet d'envoyer une confirmation | Le noeud envoie un `AckMessage` pour confirmer qu'il a bien effectué les opérations demandées. Le type permet de savoir à quel message il répond. |
+| `PutMessage` | `ressource` | Permet d'ajouter une ressource à la DHT | Le noeud compare l'id de la ressource avec le sien et celui de ses voisins pour placer la ressource correctement. Si la position est trouvée, il envoie un `RessourceMessage` à ses voisins pour qu'ils ajoutent également la ressource. |
+| `GetMessage` | `Node requestingNode`<br>`int idRessource` | Permet de récupérer une ressource | Le noeud compare l'id de la ressource avec le sien et celui de ses voisins jusqu'à trouver la ressource. Dès qu'elle est trouvée, il envoie un `RessourceMessage` au noeud demandeur. |
+| `RessourceMessage` | `Ressource ressource`<br>`boolean center`<br>`boolean forwardingResource` | Permet de transmettre une ressource | ce message a deux fonctions : soit il transmet une ressource à un noeud demandeur (`forwardingResource = true`), soit il informe les voisins que sa source est le noeud le plus proche de la ressource (`center = true`) et qu'ils doivent ajouter une ressource à leur liste. |
+| `DeleteMessage` | `int idRsourceToDelete` | Permet de supprimer une ressource | La ressource est supprimée de la liste du noeud destinataire s'il la possède. Ce message est utilisé lorsqu'un noeud rejoint (ou quitte) la DHT lors de la redistribution des ressources (pour maintenir le bon degré de réplication). |
 
 ### Les ressources
 
 (détailler le fonctionnement des ressources)
-
 
 ## Fonctionnalités de la DHT
 
@@ -46,12 +60,12 @@ Pour pouvoir ajouter un noeud à la DHT, on crée un `JoinMessage` qui est stock
 Quand le noeud à insérer reçoit le `InsertMessage`,il met à jour ses voisins et leur envoie un autre `InsertMessage` en leur précisant qu'il est leur voisin de gauche (resp de droite). Les noeuds mettent alors à jour leur voisin en gardant en mémoire leur ancien voisin en cas de problème et redistribue leur ressource correctement pour maintenir le bon degré de réplication et la "chaîne". Pour cela, il compare l'id du nouveau noeud avec l'id des ressources, s'il est plus grand (pour le voisin de gauche) ou plus petit (pour le voisin de droite), il informe le nouveau noeud qu'il doit ajouter cette ressource à sa liste de ressources. Il envoie également un `DeleteRessource` à son ancien voisin de droite/gauche afin qu'il supprime cette ressource afin de garder un degré de réplication à 3. Si le noeud possède la ressource, il la supprime sinon il renvoie le `DeleteMessage` au noeud source pour qu'il supprime la ressource. Ce dernier cas correspond à l'insertion du nouveau noeud en bout de chaine de replication.
 Une fois tout cela fait, les noeuds concernés par l'insertion du nouveau noeud se déverouille.
 
-
 ### Suppression d'un noeud
 
-(parler de "comment maintenir le degré de réplication de chaque donnée" parce qu'on l'a fait et c'est assez avancé je crois)
+**(parler de "comment maintenir le degré de réplication de chaque donnée" parce qu'on l'a fait et c'est assez avancé je crois)**
 
 Lorsqu'un noeud veut quitter la DHT, il se bloque et envoie un message à ses deux voisins. Le message contient le noeud qui deviendra le nouveau voisin ainsi qu'une chaîne de caractère indiquant le côté du noeud qui va changer (droite ou gauche). Quand un noeud reçoit un `LeaveMessage`, il met à jour ses voisins selon l'indication puis il envoie un `AckMessage` au noeud qui part pour lui signifier qu'il a bien effectué les changements.
+
 Dès que la queue du noeud contient 2 `AckMessage` (celui du voisin de droite et celui de gauche), le noeud répartit ses ressources à ses voisins. Pour ce faire, il parcourt la liste de ses ressources et pour chaque il envoie à son voisin avec l'id le plus faible (celui de gauche) un message pour placer la ressource puis il supprime cette dernière. Le fait que ce soit le noeud avec le plus petit id qui s'en occupe garantie que la ressource soit placée correctement. Une fois la liste des ressources vides, il initialise ses voisins à _null_, se déverrouille et il vérifie qu'il n'a pas de message en attende (il les livre s'il en a) puis il part.
 
 ### Ajout d'une ressource
