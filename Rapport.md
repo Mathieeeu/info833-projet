@@ -29,6 +29,12 @@ Les noeuds ont la possibilité de rejoindre ou de quitter la `DHT` grace aux mé
 
 Nous avons réalisé les étapes 1, 2 et 3 du projet.
 
+### Evènements et simulation
+
+La simulation est "gérée" majoritairement par la classe `DES`. Cette classe contient une liste de tous les noeuds créés (qu'ils soient présent ou non dans la DHT) ainsi qu'une liste d'évènements. Un évènement possède un message, une cible à qui délivrer le message et un délais d'exécution. Le message sera délivré une fois son délais d'exècution à 0. 
+A chaque tilt d'horloge, la classe parcourt toute la liste des évènements et regarde si leur temps d'exécution est venu. Si c'est le cas, elle les sort de la liste d'event et les délivre à l'aide de la méthode _deliver_ sinon elle diminue leur délais de 1. Une fois toute la liste parcourue, le temps de la simulation avance de 1. Quand la liste d'évènement est vide, la classe regarde si des messages sont en queue sur des noeuds et si ce n'est pas le cas, la simulation s'arrête.
+Pour ajouter un côté aléatoire à notre simulation, la méthode _deliver_ possède 2 arguments : minTimeToDeliver et maxTimeToDeliver. Ils servent à donner une fourchette dans laquelle le message sera envoyé permettant de changer le scénario à chaque fois et donc de se rapprocher un peu plus de la réalité.
+
 ### Ajout d'un noeud
 
 Pour pouvoir ajouter un noeud à la DHT, on crée un `JoinMessage` qui est stocké dans la liste des évènements jusqu'à ce que son temps d'exécution arrive. A ce moment là, on transfère le message au premier noeud de la DHT. Le noeud compare alors son id avec celui du noeud à inserer
