@@ -29,22 +29,17 @@ Les noeuds ont la possibilité de rejoindre ou de quitter la `DHT` grace aux mé
 
 Nous avons réalisé les étapes 1, 2 et 3 du projet.
 
-### Envoi d'un message
-
-(parler des délais aléatoires)
-
 ### Ajout d'un noeud
 
-(parler de "comment maintenir le degré de réplication de chaque donnée" parce qu'on l'a fait et c'est assez avancé je crois)
 Pour pouvoir ajouter un noeud à la DHT, on crée un `JoinMessage` qui est stocké dans la liste des évènements jusqu'à ce que son temps d'exécution arrive. A ce moment là, on transfère le message au premier noeud de la DHT. Le noeud compare alors son id avec celui du noeud à inserer
 - Si l'id est supérieur au sien et inférieur à celui de son voisin de droite, le noeud se verouille et transfère le message à son voisin de droite
 - Si le noeud possède un id supérieur à l'id du noeud à insérer, il se bloque et envoie un `InsertMessage` au noeud en lui précisant ses voisins
 - Si l'id du noeud courant est inférieur à celui du noeud à insérer et supérieur à celui de son voisin de gauche (insertion entre le premier et le dernier noeud de la DHT), alors le noeud courant se bloque et envoie un `InsertMessage` au noeud voulant rejoindre la communauté de l'anneau en lui précisant ses voisins
 - Si aucun de ces cas n'est validé, on transfère le message au noeud suivant (le voisin de doite) dans la DHT
 
-Quand le noeud à insérer reçoit le `InsertMessage`,il met à jour ses voisins et leur envoie un autre `InsertMessage` en leur précisant qu'il est leur voisin de gauche (resp de droite). Les noeuds mettent alors à jour leur voisin en gardant en mémoire leur ancien voisin en cas de problème et redistribue leur ressource correctement pour maintenir le bon degré de réplication et la "chaîne".
+Quand le noeud à insérer reçoit le `InsertMessage`,il met à jour ses voisins et leur envoie un autre `InsertMessage` en leur précisant qu'il est leur voisin de gauche (resp de droite). Les noeuds mettent alors à jour leur voisin en gardant en mémoire leur ancien voisin en cas de problème et redistribue leur ressource correctement pour maintenir le bon degré de réplication et la "chaîne". Pour cela, il compare l'id du nouveau noeud avec l'id des ressources, s'il est plus grand (pour le voisin de gauche) ou plus petit (pour le voisin de droite), il informe le nouveau noeud qu'il doit ajouter cette ressource à sa liste de ressources. Il envoie également un `DeleteRessource` à son ancien voisin de droite/gauche afin qu'il supprime cette ressource afin de garder un degré de réplication à 3. Si le noeud possède la ressource, il la supprime sinon il renvoie le `DeleteMessage` au noeud source pour qu'il supprime la ressource. Ce dernier cas correspond à l'insertion du nouveau noeud en bout de chaine de replication.
+Une fois tout cela fait, les noeuds concernés par l'insertion du nouveau noeud se déverouille.
 
-explication pas finie!!!!
 
 ### Suppression d'un noeud
 
