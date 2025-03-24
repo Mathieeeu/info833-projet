@@ -209,6 +209,7 @@ public class Node {
                     }
                     else if (this.left.getId() > this.id && putMessage.getResource().getId() > this.left.getId()) {
                         // Dans le cas du premier noeud du réseau, l'id gauche est plus grand que l'id courant, si l'id de la resource est plus grand que le noeud gauche, on l'ajoute entre le dernier et le premier noeud car c'est le nouveau plus grand 
+                        // Bonjour ça va ? :D 
                         App.des.deliver(this.left, new ResourceMessage(this, putMessage.getResource(), true));
                     } else {
                         // Si l'id est plus grand, on transfère le message au noeud droit du noeud courant
